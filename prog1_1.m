@@ -79,19 +79,20 @@ for i = 1:length(nn);
     end
     
     % write solutions table to data file for each n value
-    writetable(soln,['soln',prbsfx,'n',num2str(n),'.dat']);
+    writetable(soln,['soln',prbsfx,'n',num2str(n),'.dat'],'Delimiter','\t');
     
 end
 
 % export data to .dat file
 
-nrms = zeros(size(L2,1),size(L2,2)*2);
+nrms = zeros(size(L2,1),size(L2,2)*2+1);
 nrmsvars = {'n'};
+nrms(:,1) = nn;
 
 for j = 1:size(L2,2)
     
-    nrms(:,j*2-1) = L2(:,j);
-    nrms(:,j*2) = Linf(:,j);
+    nrms(:,j*2) = L2(:,j);
+    nrms(:,j*2+1) = Linf(:,j);
     
     beta = betalist(j);
     nrmssfix = ['be',num2str(beta)];
@@ -99,9 +100,9 @@ for j = 1:size(L2,2)
     
 end
 
-nrmtbl = table(nn, nrms);
-nrmtbl.Properties,VariableNames = nrmsvars;
-writetable(nrmtbl,['nrms',prbsfx,'.dat']);
+nrmtbl = array2table(nrms);
+nrmtbl.Properties.VariableNames = nrmsvars;
+writetable(nrmtbl,['nrms',prbsfx,'.dat'],'Delimiter','\t');
 
 
 %         plot(x,uext,'-k',x,uapx,'--r','Linewidth',2)
