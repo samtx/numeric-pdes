@@ -7,24 +7,40 @@
 % -k*u''(x) + beta*u'(x) = f(x)
 % 0 < x < 1, u(0) = a, u(1) = b
 
+nn = [25, 50, 100, 200]';  % internal mesh points
+
 % approx u(x) ~ U(x)
 % Prob 1.1
 
 prob = 1;
 part = 1;
-k = 1; f = 0; a = 0; b = 1;
+prbsfx = ['pr',num2str(prob),'pt',num2str(part)];
 
-for n = [25, 50, 100, 200]  % internal mesh points
+k = 1; fx = 0; a = 0; b = 1;
+betalist = [1, 8, 64];  % beta values
+% for beta = betalist
+%
+% end
+
+L2 = zeros(length(nn),length(betalist));
+Linf = zeros(length(nn),length(betalist));
+
+nrms = table(nn);
+nrms.Properties.VariableNames = {'n'};
+
+for i = 1:length(nn);
+    
+    n = nn(i);
     
     h = (b-a)/(n+1);  % set step size
     x = [a+h:h:b-h]'; %#ok<NBRAK>
+    soln = table(x);  % init soln data table with FD points
     
-    data = table(x);
-    for beta = [1, 8, 64]  % beta values
+    for j = 1:length(betalist)
         
+        beta = betalist(j);
         
-        f = ones(n,1)*f;  % init f vector
-
+        f = ones(n,1)*fx;  % init f vector
         
         % create A matrix
         A = diag((-k - beta*h/2)*ones(n-1,1),-1) + ...
@@ -40,22 +56,62 @@ for n = [25, 50, 100, 200]  % internal mesh points
         
         % exact solution
         u_exact = @(X) (1 - exp(beta*X))/(1 - exp(beta));
-        uext = u_exact(x); 
+        uext = u_exact(x);
         
         % compute error
-        e = uext - uapx;
+        e = abs(uext - uapx) + eps('double');
         
-        plot(x,uext,'-k',x,uapx,'--r','Linewidth',2)
-        legend('Exact Solution','Approx Solution');
-        xlabel('x');ylabel('y')
+        % compute error norms
+        thisL2 = 1;
+        thisLinf = 1;
         
-        dlmwrite
-        e_1p1b1n25 = e;
-        uext_1p1b1n25 = u;
-        uapx_1p1b1n25 = U;
-        break
+        % save norms data to matrices
+        L2(i,j) = thisL2;
+        Linf(i,j) = thisLinf;
+        
+        % save solution data to table
+        solnsfix = ['be',num2str(beta)];
+        solnvars = {['uext', solnsfix],['uapx', solnsfix],['e', solnsfix]};
+        tmp = table(uext,uapx,e);
+        tmp.Properties.VariableNames = solnvars;
+        soln = [soln, tmp]; %#ok<AGROW> % concatenate tmp table with solutions table
+        
     end
-    break
+    
+    % write solutions table to data file for each n value
+    writetable(soln,['soln',prbsfx,'n',num2str(n),'.dat']);
+    
 end
 
 % export data to .dat file
+
+nrms = zeros(size(L2,1),size(L2,2)*2);
+nrmsvars = {'n'};
+
+for j = 1:size(L2,2)
+    
+    nrms(:,j*2-1) = L2(:,j);
+    nrms(:,j*2) = Linf(:,j);
+    
+    beta = betalist(j);
+    nrmssfix = ['be',num2str(beta)];
+    nrmsvars = [nrmsvars, {['L2', nrmssfix], ['Linf', nrmssfix]}]; %#ok<AGROW>
+    
+end
+
+nrmtbl = table(nn, nrms);
+nrmtbl.Properties,VariableNames = nrmsvars;
+writetable(nrmtbl,['nrms',prbsfx,'.dat']);
+
+
+%         plot(x,uext,'-k',x,uapx,'--r','Linewidth',2)
+%         legend('Exact Solution','Approx Solution');
+%         xlabel('x');ylabel('y')
+
+
+
+
+
+
+
+
