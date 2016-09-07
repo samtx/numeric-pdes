@@ -7,6 +7,8 @@
 % -k*u''(x) + beta*u'(x) = f(x)
 % 0 < x < 1, u(0) = a, u(1) = b
 
+save_file = true;
+
 nn = [25, 50, 100, 200]';  % internal mesh points
 
 % approx u(x) ~ U(x)
@@ -59,15 +61,20 @@ for i = 1:length(nn);
         uext = u_exact(x);
         
         % compute error
-        e = abs(uext - uapx) + eps('double');
+        e = uext - uapx;
         
         % compute error norms
-        thisL2 = 1;
-        thisLinf = 1;
-        
+        thisL2 = norm(e,2);
+        thisLinf = norm(e,Inf);
+        %l2norm = sqrt(sum((exact_u - u).^2)/(n+1));
+        % infnorm = max(abs(uexact
+                   
         % save norms data to matrices
         L2(i,j) = thisL2;
         Linf(i,j) = thisLinf;
+        
+        % add eps to error for graphing purposes
+        e = e + eps;
         
         % save solution data to table
         solnsfix = ['be',num2str(beta)];
@@ -79,8 +86,9 @@ for i = 1:length(nn);
     end
     
     % write solutions table to data file for each n value
-    writetable(soln,['soln',prbsfx,'n',num2str(n),'.dat'],'Delimiter','\t');
-    
+    if save_file
+        writetable(soln,['soln',prbsfx,'n',num2str(n),'.dat'],'Delimiter','\t');
+    end
 end
 
 % export data to .dat file
@@ -102,8 +110,9 @@ end
 
 nrmtbl = array2table(nrms);
 nrmtbl.Properties.VariableNames = nrmsvars;
-writetable(nrmtbl,['nrms',prbsfx,'.dat'],'Delimiter','\t');
-
+if save_file
+    writetable(nrmtbl,['nrms',prbsfx,'.dat'],'Delimiter','\t');
+end
 
 %         plot(x,uext,'-k',x,uapx,'--r','Linewidth',2)
 %         legend('Exact Solution','Approx Solution');
