@@ -14,7 +14,7 @@ nn = [25, 50, 100, 200]';  % internal mesh points
 data_dir = 'data/';
 hw = 1;
 prob = 1;
-part = 1;
+part = 2;
 prbsfx = [data_dir,'hw',num2str(hw),'pb',num2str(prob),'pt',num2str(part)];
 
 k = 1; fx = 0; a = 0; b = 1;
@@ -44,13 +44,13 @@ for i = 1:length(nn);
         f = ones(n,1)*fx;  % init f vector
         
         % create A matrix
-        A = diag((-k - beta*h/2)*ones(n-1,1),-1) + ...
-            diag(2*k*ones(n,1)) + ...
-            diag((-k + beta*h/2)*ones(n-1,1),+1);
+        A = diag((-k - beta*h) *ones(n-1,1),-1) + ...
+            diag((2*k + beta*h)*ones(n,1)) + ...
+            diag((-k)          *ones(n-1,1),+1);
         
         % boundary conditions
-        f(1) = f(1) - (-k - beta*h/2) * a;      % left
-        f(end) = f(end) - (-k + beta*h/2) * b;  % right
+        f(1) = f(1) - (-k - beta*h) * a;      % left
+        f(end) = f(end) - (-k) * b;  % right
         
         % solve AU=f matrix equation
         uapx = A\f;  % u approximate
@@ -60,15 +60,14 @@ for i = 1:length(nn);
         uext = u_exact(x);
         
         % compute error
-        e = abs(uext - uapx) + eps('double');
-        
-        % compute error norms
-        thisL2 = 1;
-        thisLinf = 1;
+        e = uext - uapx;
         
         % save norms data to matrices
-        L2(i,j) = thisL2;
-        Linf(i,j) = thisLinf;
+        L2(i,j) = norm(e,2);
+        Linf(i,j) = norm(e,Inf);
+        
+        % take abs value and add eps to error for graphing purposes
+        e = abs(e) + eps;      
         
         % save solution data to table
         solnsfix = ['be',num2str(beta)];

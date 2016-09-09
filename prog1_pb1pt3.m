@@ -14,11 +14,12 @@ nn = [25, 50, 100, 200]';  % internal mesh points
 data_dir = 'data/';
 hw = 1;
 prob = 1;
-part = 1;
+part = 3;
 prbsfx = [data_dir,'hw',num2str(hw),'pb',num2str(prob),'pt',num2str(part)];
 
-k = 1; fx = 0; a = 0; b = 1;
-betalist = [1, 8, 64];  % beta values
+x0 = 0; xf = 1;
+k = 1; fx = 1; a = 0; b = 0;
+betalist = 1;  % beta values
 % for beta = betalist
 %
 % end
@@ -33,42 +34,47 @@ for i = 1:length(nn);
     
     n = nn(i);
     
-    h = (b-a)/(n+1);  % set step size
-    x = [a+h:h:b-h]'; %#ok<NBRAK>
+    h = (xf-x0)/(n+1);  % set step size
+    x = [x0+h:h:xf-h]'; %#ok<NBRAK>
     soln = table(x);  % init soln data table with FD points
     
     for j = 1:length(betalist)
         
         beta = betalist(j);
         
-        f = ones(n,1)*fx;  % init f vector
+        f = ones(n,1)*fx*(h^2);  % init f vector
+        
+        % create coefficient vector
+        c(1) = -k - beta*h/2;
+        c(2) = 2*k ;
+        c(3) = -k + beta*h/2;       
         
         % create A matrix
-        A = diag((-k - beta*h/2)*ones(n-1,1),-1) + ...
-            diag(2*k*ones(n,1)) + ...
-            diag((-k + beta*h/2)*ones(n-1,1),+1);
+        A = diag(c(1)*ones(n-1,1),-1) + ...
+            diag(c(2)*ones(n,1)) + ...
+            diag(c(3)*ones(n-1,1),+1);
         
         % boundary conditions
-        f(1) = f(1) - (-k - beta*h/2) * a;      % left
-        f(end) = f(end) - (-k + beta*h/2) * b;  % right
+        f(1) = f(1) - c(1)*a;      % left
+        f(end) = f(end) - c(3)*b;  % right
         
         % solve AU=f matrix equation
         uapx = A\f;  % u approximate
         
         % exact solution
-        u_exact = @(X) (1 - exp(beta*X))/(1 - exp(beta));
+        z = exp(beta) - 1;
+        u_exact = @(X) 1/(z*beta)*(1 + z*X - exp(beta*X));
         uext = u_exact(x);
         
         % compute error
-        e = abs(uext - uapx) + eps('double');
-        
-        % compute error norms
-        thisL2 = 1;
-        thisLinf = 1;
+        e = uext - uapx;
         
         % save norms data to matrices
-        L2(i,j) = thisL2;
-        Linf(i,j) = thisLinf;
+        L2(i,j) = norm(e,2);
+        Linf(i,j) = norm(e,Inf);
+        
+        % take abs value and add eps to error for graphing purposes
+        e = abs(e) + eps;      
         
         % save solution data to table
         solnsfix = ['be',num2str(beta)];

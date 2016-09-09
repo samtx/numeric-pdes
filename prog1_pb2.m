@@ -13,15 +13,25 @@ nn = [25, 50, 100, 200]';  % internal mesh points
 % Prob 1.1
 data_dir = 'data/';
 hw = 1;
-prob = 1;
+prob = 2;
 part = 1;
 prbsfx = [data_dir,'hw',num2str(hw),'pb',num2str(prob),'pt',num2str(part)];
 
-k = 1; fx = 0; a = 0; b = 1;
-betalist = [1, 8, 64];  % beta values
-% for beta = betalist
-%
-% end
+t0 = 0; tf = 1;
+k = 1; beta = 0; 
+a = 0; b = 0;  % b.c. values
+
+% constants
+q = 200;    % lb/in2
+D = 8.8e7;  % lb*in
+L = 50;     % in
+
+gamma = S*(L^2)/D;
+Z = q*(L^4)/(2*D);
+
+sList = [100, 1000, 10000];  % S values,  [lb/in]
+
+
 
 L2 = zeros(length(nn),length(betalist));
 Linf = zeros(length(nn),length(betalist));
@@ -33,42 +43,50 @@ for i = 1:length(nn);
     
     n = nn(i);
     
-    h = (b-a)/(n+1);  % set step size
-    x = [a+h:h:b-h]'; %#ok<NBRAK>
-    soln = table(x);  % init soln data table with FD points
+    h = (tf-t0)/(n+1);  % set step size
+    t = [t0+h:h:tf-h]'; %#ok<NBRAK>
+    soln = table(t);  % init soln data table with FD points
     
-    for j = 1:length(betalist)
+    % build f(t) vector
+    ft = Z*t.*(1-t);
+    
+    for j = 1:length(sList)
         
-        beta = betalist(j);
+        S = sList(j);
         
-        f = ones(n,1)*fx;  % init f vector
+        f = ft*(h^2);  % init f vector
+        
+        % create coefficient vector
+        c(1) = -k - beta*h/2;
+        c(2) = 2*k ;
+        c(3) = -k + beta*h/2;       
         
         % create A matrix
-        A = diag((-k - beta*h/2)*ones(n-1,1),-1) + ...
-            diag(2*k*ones(n,1)) + ...
-            diag((-k + beta*h/2)*ones(n-1,1),+1);
+        A = diag(c(1)*ones(n-1,1),-1) + ...
+            diag(c(2)*ones(n,1)) + ...
+            diag(c(3)*ones(n-1,1),+1);
         
         % boundary conditions
-        f(1) = f(1) - (-k - beta*h/2) * a;      % left
-        f(end) = f(end) - (-k + beta*h/2) * b;  % right
+        f(1) = f(1) - c(1)*a;      % left
+        f(end) = f(end) - c(3)*b;  % right
         
         % solve AU=f matrix equation
         uapx = A\f;  % u approximate
         
         % exact solution
-        u_exact = @(X) (1 - exp(beta*X))/(1 - exp(beta));
+        u_exact = @(t) z/gamma*(-t^2 + t-2/gamma + ...
+            2/(;
         uext = u_exact(x);
         
         % compute error
-        e = abs(uext - uapx) + eps('double');
-        
-        % compute error norms
-        thisL2 = 1;
-        thisLinf = 1;
+        e = uext - uapx;
         
         % save norms data to matrices
-        L2(i,j) = thisL2;
-        Linf(i,j) = thisLinf;
+        L2(i,j) = norm(e,2);
+        Linf(i,j) = norm(e,Inf);
+        
+        % take abs value and add eps to error for graphing purposes
+        e = abs(e) + eps;      
         
         % save solution data to table
         solnsfix = ['be',num2str(beta)];
