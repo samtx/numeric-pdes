@@ -26,15 +26,13 @@ q = 200;    % lb/in2
 D = 8.8e7;  % lb*in
 L = 50;     % in
 
-gamma = S*(L^2)/D;
-Z = q*(L^4)/(2*D);
+
 
 sList = [100, 1000, 10000];  % S values,  [lb/in]
 
 
-
-L2 = zeros(length(nn),length(betalist));
-Linf = zeros(length(nn),length(betalist));
+L2 = zeros(length(nn),length(sList));
+Linf = zeros(length(nn),length(sList));
 
 nrms = table(nn);
 nrms.Properties.VariableNames = {'n'};
@@ -46,20 +44,24 @@ for i = 1:length(nn);
     h = (tf-t0)/(n+1);  % set step size
     t = [t0+h:h:tf-h]'; %#ok<NBRAK>
     soln = table(t);  % init soln data table with FD points
-    
-    % build f(t) vector
-    ft = Z*t.*(1-t);
-    
+      
     for j = 1:length(sList)
         
         S = sList(j);
         
+        gamma = S*(L^2)/D;
+        
+        Z = q*(L^4)/(2*D);
+            
+        % build f(t) vector
+        ft = Z*t.*(1-t);
+        
         f = ft*(h^2);  % init f vector
         
         % create coefficient vector
-        c(1) = -k - beta*h/2;
-        c(2) = 2*k ;
-        c(3) = -k + beta*h/2;       
+        c(1) = -k;
+        c(2) = 2*k + gamma*h^2 ;
+        c(3) = -k;       
         
         % create A matrix
         A = diag(c(1)*ones(n-1,1),-1) + ...
@@ -74,9 +76,10 @@ for i = 1:length(nn);
         uapx = A\f;  % u approximate
         
         % exact solution
-        u_exact = @(t) z/gamma*(-t^2 + t-2/gamma + ...
-            2/(;
-        uext = u_exact(x);
+        u_exact = @(t) Z/gamma*(-t.^2 + t-2/gamma + ...
+            2/(gamma * sinh(sqrt(gamma))) * ...
+            (sinh(sqrt(gamma)*t) + sinh(sqrt(gamma)*(1-t))));
+        uext = u_exact(t);
         
         % compute error
         e = uext - uapx;
@@ -89,7 +92,7 @@ for i = 1:length(nn);
         e = abs(e) + eps;      
         
         % save solution data to table
-        solnsfix = ['be',num2str(beta)];
+        solnsfix = ['S',num2str(S)];
         solnvars = {['uext', solnsfix],['uapx', solnsfix],['e', solnsfix]};
         tmp = table(uext,uapx,e);
         tmp.Properties.VariableNames = solnvars;
@@ -113,8 +116,8 @@ for j = 1:size(L2,2)
     nrms(:,j*2) = L2(:,j);
     nrms(:,j*2+1) = Linf(:,j);
     
-    beta = betalist(j);
-    nrmssfix = ['be',num2str(beta)];
+    S = sList(j);
+    nrmssfix = ['S',num2str(S)];
     nrmsvars = [nrmsvars, {['L2', nrmssfix], ['Linf', nrmssfix]}]; %#ok<AGROW>
     
 end
