@@ -4,6 +4,8 @@
 % 9/27/2016
 
 
+% ref: http://www.math.chalmers.se/~mohammad/teaching/PDEbok/Draft_I+II.pdf
+
 nn = 10;  % internal mesh points
 
 poly = [1:6]';  %#ok<NBRAK> % polynomial degrees
