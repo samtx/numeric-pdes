@@ -6,8 +6,8 @@
 
 % ref: http://www.math.chalmers.se/~mohammad/teaching/PDEbok/Draft_I+II.pdf
 
-poly = [1:3]';  %#ok<NBRAK> % polynomial degrees
-N = 10; % number of elements
+poly = [2:3]';  %#ok<NBRAK> % polynomial degrees
+nn = [10,20,40]; % number of elements
 
 % approx u(x) ~ U(x)
 % Prob 1.1
@@ -42,12 +42,16 @@ switch gauss_pts
         xi = [ 0.6612093864662645,-0.6612093864662645,-0.2386191860831969, 0.2386191860831969,-0.9324695142031521, 0.9324695142031521];
 end
 
-% nrms = table(poly);
-% nrms.Properties.VariableNames = {'ply'};
+nrms = table(poly);
+nrms.Properties.VariableNames = {'ply'};
 
-for p = 1:length(poly);
+for i = 1:length(nn);
+        
+    N = nn(i);  % number of finite elements
+
+for pp = 1:length(poly);
     
-    P = poly(p);  % degree polynomial
+    P = poly(pp);  % degree polynomial
     
     phi0 = {};
     phi1 = {};
@@ -60,8 +64,8 @@ for p = 1:length(poly);
             phi0{2} = @(s) 0.5*s + 0.5;
             phi1{1} = @(s) -0.5;  % derivative
             phi1{2} = @(s) 0.5;
-            phi2{1} = @(s) 0;
-            phi2{2} = @(s) 0;
+%             phi2{1} = @(s) 0;
+%             phi2{2} = @(s) 0;
         case 2  % quadratic
             phi0{1} = @(s) 0.5*s^2 - 0.5*s;
             phi0{2} = @(s) -s^2 + 1;
@@ -69,9 +73,9 @@ for p = 1:length(poly);
             phi1{1} = @(s) s - 0.5;
             phi1{2} = @(s) -2*s;
             phi1{3} = @(s) s + 0.5;
-            phi2{1} = @(s) 1;
-            phi2{2} = @(s) -2;
-            phi2{3} = @(s) 1;
+%             phi2{1} = @(s) 1;
+%             phi2{2} = @(s) -2;
+%             phi2{3} = @(s) 1;
         case 3  % cubic
             phi0{1} = @(s) -27/48*(s^3 - s^2 - 1/9*s + 1/9);
             phi0{2} = @(s) 1/3*(s^3 - 1/3*s^2 - s + 1/3);
@@ -81,50 +85,74 @@ for p = 1:length(poly);
             phi1{2} = @(s) 1/3*(3*s^2 - 2/3*s - 1);
             phi1{3} = @(s) -1/3*(3*s^2 + 2/3*s - 1);
             phi1{4} = @(s) 27/48*(3*s^2 + 2*s - 1/9);
-            phi2{1} = @(s) -27/48*(6*s - 2);
-            phi2{2} = @(s) 1/3*(6*s - 2/3);
-            phi2{3} = @(s) -1/3*(6*s + 2/3);
-            phi2{4} = @(s) 27/48*(6*s + 2);
+%             phi2{1} = @(s) -27/48*(6*s - 2);
+%             phi2{2} = @(s) 1/3*(6*s - 2/3);
+%             phi2{3} = @(s) -1/3*(6*s + 2/3);
+%             phi2{4} = @(s) 27/48*(6*s + 2);
     end
     
     jac = 1;  % jacobian
     
-    A0 = zeros(length(phi0));
-    A1 = zeros(length(phi1));
-    A2 = zeros(length(phi2));
-    
-    % create local mass (u) and bending (u'') matrices
-    for i = 1:length(phi0)
-        for j = i:length(phi0)
-            
-            f0 = @(s) phi0{i}(s)*phi0{j}(s);  % function to integrate
-            % integration of f0 over -1,1 using 4 point quadrature
-            A0(i,j) = wi(1)*f0(xi(1)) + wi(2)*f0(xi(2)) + wi(3)*f0(xi(3)) + wi(4)*f0(xi(4));
-            
-            f1 = @(s) phi1{i}(s)*phi1{j}(s);  % derivative function to integrate
-            % integration of f1 over -1,1 using 4 point quadrature
-            A1(i,j) =  wi(1)*f1(xi(1)) + wi(2)*f1(xi(2)) + wi(3)*f1(xi(3)) + wi(4)*f1(xi(4));
-            
-            f2 = @(s) phi2{i}(s)*phi2{j}(s);  % second derivative function to integrate
-            % integration of f2 over -1,1 using 4 point quadrature
-            A2(i,j) =  wi(1)*f2(xi(1)) + wi(2)*f2(xi(2)) + wi(3)*f2(xi(3)) + wi(4)*f2(xi(4));
-            
-        end
-    end
-    
-    % copy upper triangular part to lower triangular part for symmetry
-    A0 = A0 + triu(A0,1)';
-    A1 = A1 + triu(A1,1)';
-    
-    allA{p} = A0;
-    allAprm{p} = A1;
-    
+    N = nn(i);
+        
+        h = (tf-t0)/(N+1);  % set step size
+        t = [t0+h:h:tf-h]'; %#ok<NBRAK>
+        soln = table(t);  % init soln data table with FD points
     
     % init global matrices
     glbA0 = zeros(N*P+1);
     glbA1 = zeros(N*P+1);
-    glbA2 = zeros(N*P+1);
+%     glbA2 = zeros(N*P+1);
     
+
+    % loop over the finite elements and create local mass and stiffness
+    % matrices.
+    
+    for n = 1:N
+        
+        % init local matrices
+        A0 = zeros(length(phi0));
+        A1 = zeros(length(phi1));
+        %     A2 = zeros(length(phi2));
+        
+        % create local mass (u) and bending (u'') matrices
+        for i = 1:length(phi0)
+            for j = i:length(phi0)
+                
+                f0 = @(s) phi0{i}(s)*phi0{j}(s);  % function to integrate
+                % integration of f0 over -1,1 using 4 point quadrature
+                A0(i,j) = wi(1)*f0(xi(1)) + wi(2)*f0(xi(2)) + wi(3)*f0(xi(3)) + wi(4)*f0(xi(4));
+                
+                f1 = @(s) phi1{i}(s)*phi1{j}(s);  % derivative function to integrate
+                % integration of f1 over -1,1 using 4 point quadrature
+                A1(i,j) =  wi(1)*f1(xi(1)) + wi(2)*f1(xi(2)) + wi(3)*f1(xi(3)) + wi(4)*f1(xi(4));
+                
+                %             f2 = @(s) phi2{i}(s)*phi2{j}(s);  % second derivative function to integrate
+                %             % integration of f2 over -1,1 using 4 point quadrature
+                %             A2(i,j) =  wi(1)*f2(xi(1)) + wi(2)*f2(xi(2)) + wi(3)*f2(xi(3)) + wi(4)*f2(xi(4));
+                
+            end
+        end
+        
+        % copy upper triangular part to lower triangular part for symmetry
+        A0 = A0 + triu(A0,1)';
+        A1 = A1 + triu(A1,1)';
+        
+        % add local matrix to global matrix
+        idx1 = n*P-(P-1);% begin row/column = n*P-1
+        idx2 = (n+1)*P-(P-1); % end row/column = (n+1)*P-1
+        glbA0(idx1:idx2,idx1:idx2) = glbA0(idx1:idx2,idx1:idx2) + A0;
+        glbA1(idx1:idx2,idx1:idx2) = glbA1(idx1:idx2,idx1:idx2) + A1;
+
+        
+    end
+    
+    % create force vector
+    
+    
+    % apply boundary conditions
+    
+       
     t0 = 0; tf = 1;
     k = 1; beta = 0;
     a = 0; b = 0;  % b.c. values
@@ -134,8 +162,8 @@ for p = 1:length(poly);
     D = 8.8e7;  % lb*in
     L = 50;     % in
     
-    
-    
+end
+return
     sList = [100, 1000, 10000];  % S values,  [lb/in]
     
     
@@ -149,7 +177,7 @@ for p = 1:length(poly);
         
         n = nn(i);
         
-        h = (tf-t0)/(n+1);  % set step size
+        h = (tf-t0)/(N+1);  % set step size
         t = [t0+h:h:tf-h]'; %#ok<NBRAK>
         soln = table(t);  % init soln data table with FD points
         
@@ -244,7 +272,7 @@ for p = 1:length(poly);
     %     tmp.Properties.VariableNames = solnvars;
     %     soln = [soln, tmp]; %#ok<AGROW> % concatenate tmp table with solutions table
     %
-end
+% end
 %
 %     % write solutions table to data file for each n value
 %     writetable(soln,[prbsfx,'n',num2str(n),'soln','.dat'],'Delimiter','\t');
