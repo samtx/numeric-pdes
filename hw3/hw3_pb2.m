@@ -3,15 +3,23 @@
 % Sam Friedman
 % 10/11/2016
 
+% Prob 2
+data_dir = 'data/';
+hw = 3;
+prob = 2;
+part = 1;
+prbsfx = [data_dir,'hw',num2str(hw),'pb',num2str(prob),'pt',num2str(part)];
+
 
 % ref: http://www.math.chalmers.se/~mohammad/teaching/PDEbok/Draft_I+II.pdf
 
 % poly = [2,3]';  %#ok<NBRAK> % polynomial degrees
 % nn = [10,20,40]; % number of elements
 % sList = [100, 1000, 10000];  % S values,  [lb/in]
-poly = 1;  %#ok<NBRAK> % polynomial degrees
+poly = 3;  % polynomial degrees
 nn = 10; % number of elements
-sList = 10000;  % S values,  [lb/in]
+sList = 100;  % S values,  [lb/in]
+bList = 0; % [0, 2e10, 2e13]  [lb] 
 
 % constants
 q = 200;    % lb/in2
@@ -23,16 +31,9 @@ Z = q*(L^3)/(2*D);
 t0 = 0; tf = 1;
 
 % boundary conditions
-u0 = 0; uf = 0;
+u0 = 0; 
 
 % approx u(x) ~ U(x)
-% Prob 1
-data_dir = 'data/';
-hw = 3;
-prob = 1;
-part = 1;
-prbsfx = [data_dir,'hw',num2str(hw),'pb',num2str(prob),'pt',num2str(part)];
-
 
 % Gauss Quadrature weights and abscissa
 % ref: https://pomax.github.io/bezierinfo/legendre-gauss.html
@@ -119,12 +120,14 @@ for pp = 1:length(poly);
             for j = i:length(phi0)
                 
                 f0 = @(s) phi0{i}(s)*phi0{j}(s);  % function to integrate
-                % integration of f0 over -1,1 using 4 point quadrature
-                A0(i,j) = wi(1)*f0(xi(1)) + wi(2)*f0(xi(2)) + wi(3)*f0(xi(3)) + wi(4)*f0(xi(4));
-                
                 f1 = @(s) phi1{i}(s)*phi1{j}(s);  % derivative function to integrate
-                % integration of f1 over -1,1 using 4 point quadrature
-                A1(i,j) =  wi(1)*f1(xi(1)) + wi(2)*f1(xi(2)) + wi(3)*f1(xi(3)) + wi(4)*f1(xi(4));
+                
+                for k = 1:length(wi)
+                    % integration of f0 over -1,1 using 4 point quadrature
+                    A0(i,j) = A0(i,j) + wi(k)*f0(xi(k));
+                    % integration of f1 over -1,1 using 4 point quadrature
+                    A1(i,j) = A1(i,j) + wi(k)*f1(xi(k));
+                end
                 
             end
         end
@@ -175,11 +178,13 @@ for pp = 1:length(poly);
 %             f = f - glbA(:,1)*u0;
 %             f = f - glbA(:,end)*uf;
             glbA(1,:) = [];     % remove first row
-            glbA(end,:) = [];   % remove last row
+            f(1) = [];   % remove first entry in f vector
+%             glbA(end,:) = [];   % remove last row
+%             f(end) = []; % remove last entry in f vector
 %             glbA(:,1) = [];     % remove first column
 %             glbA(:,end) = [];   % remove last column
-            f(1) = [];   % remove first entry in f vector
-            f(end) = []; % remove last entry in f vector
+
+
             
             % -------------- solve AU = f matrix equation --------------
             uapx = glbA\f;  % u approximate
@@ -187,8 +192,8 @@ for pp = 1:length(poly);
             
             % exact solution
             u_exact = @(t) Z/gamma*(-t.^2 + t - 2/gamma + ...
-                2/(gamma * sinh(sqrt(gamma))) * ...
-                (sinh(sqrt(gamma)*t) + sinh(sqrt(gamma)*(1-t))));
+                1/(gamma * cosh(sqrt(gamma))) * ...
+                (sqrt(gamma)*sinh(sqrt(gamma)*t) + 2*cosh(sqrt(gamma)*(1-t))));
             uext = u_exact(t(2:end-1));
             
             % ----------------- compute error -------------------

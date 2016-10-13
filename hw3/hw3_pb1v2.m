@@ -6,12 +6,12 @@
 
 % ref: http://www.math.chalmers.se/~mohammad/teaching/PDEbok/Draft_I+II.pdf
 
-% poly = [2,3]';  %#ok<NBRAK> % polynomial degrees
-% nn = [10,20,40]; % number of elements
-% sList = [100, 1000, 10000];  % S values,  [lb/in]
-poly = 1;  %#ok<NBRAK> % polynomial degrees
-nn = 10; % number of elements
-sList = 10000;  % S values,  [lb/in]
+poly = [2,3]';  %  polynomial degrees
+nn = [10,20,40]; % number of elements
+sList = [100, 1000, 10000];  % S values,  [lb/in]
+% poly = 2;  %#ok<NBRAK> % polynomial degrees
+% nn = 20; % number of elements
+% sList = 10000;  % S values,  [lb/in]
 
 % constants
 q = 200;    % lb/in2
@@ -119,12 +119,19 @@ for pp = 1:length(poly);
             for j = i:length(phi0)
                 
                 f0 = @(s) phi0{i}(s)*phi0{j}(s);  % function to integrate
-                % integration of f0 over -1,1 using 4 point quadrature
-                A0(i,j) = wi(1)*f0(xi(1)) + wi(2)*f0(xi(2)) + wi(3)*f0(xi(3)) + wi(4)*f0(xi(4));
-                
                 f1 = @(s) phi1{i}(s)*phi1{j}(s);  % derivative function to integrate
-                % integration of f1 over -1,1 using 4 point quadrature
-                A1(i,j) =  wi(1)*f1(xi(1)) + wi(2)*f1(xi(2)) + wi(3)*f1(xi(3)) + wi(4)*f1(xi(4));
+                
+%                 % integration of f0 over -1,1 using 4 point quadrature
+%                 A0(i,j) = wi(1)*f0(xi(1)) + wi(2)*f0(xi(2)) + wi(3)*f0(xi(3)) + wi(4)*f0(xi(4));
+%                 % integration of f1 over -1,1 using 4 point quadrature
+%                 A1(i,j) =  wi(1)*f1(xi(1)) + wi(2)*f1(xi(2)) + wi(3)*f1(xi(3)) + wi(4)*f1(xi(4));
+                
+                for k = 1:length(wi)
+                    % integration of f0 over -1,1 using 4 point quadrature
+                    A0(i,j) = A0(i,j) + wi(k)*f0(xi(k));
+                    % integration of f1 over -1,1 using 4 point quadrature
+                    A1(i,j) = A1(i,j) + wi(k)*f1(xi(k));
+                end
                 
             end
         end
@@ -154,33 +161,28 @@ for pp = 1:length(poly);
             
         end
         
+        % ----------    Create force vector -----------------
+        % build f(t) vector
+        f = Z*t.*(1-t);
+        f = glbA0 * f;
+        
+        % ----------------- apply boundary conditions -----------------
+        tmpA0 = glbA0; tmpA1 = glbA1;
+        glbA0(1,:)   = [];   glbA1(1,:) = [];   f(1) = [];   % remove first row
+        glbA0(end,:) = []; glbA1(end,:) = []; f(end) = [];  % remove last row
+        
         % ---------------- Choose S value --------------------
         for sidx = 1:length(sList)
-            
-            % ----------    Create force vector -----------------
-            % build f(t) vector
-            f = Z*t.*(1-t);
-            f = glbA0 * f;
-            
+                     
             S = sList(sidx);
             gamma = S*(L^2)/D;
-            
+           
             % apply constant to mass matrix
             glbA0  = glbA0 * gamma;
             
             % add mass and stiffness matrices
             glbA = glbA0 + glbA1;
-            
-            % ----------------- apply boundary conditions -----------------
-%             f = f - glbA(:,1)*u0;
-%             f = f - glbA(:,end)*uf;
-            glbA(1,:) = [];     % remove first row
-            glbA(end,:) = [];   % remove last row
-%             glbA(:,1) = [];     % remove first column
-%             glbA(:,end) = [];   % remove last column
-            f(1) = [];   % remove first entry in f vector
-            f(end) = []; % remove last entry in f vector
-            
+                
             % -------------- solve AU = f matrix equation --------------
             uapx = glbA\f;  % u approximate
             uapx = uapx(2:end-1);  % remove boundary entries
@@ -197,7 +199,9 @@ for pp = 1:length(poly);
             % save norms data to matrices
             L2(nidx,sidx) = norm(e,2);
             Linf(nidx,sidx) = norm(e,Inf);
-            H1(nidx,sidx) = .0001;
+            H1(nidx,sidx) = e'*glbA1(:,2:end-1)*e + e'*glbA0(:,2:end-1)*e;
+            
+%             glbA0 = tmpA0; glbA1 = tmpA1;  % replace temporary global matrices
             
             % take abs value and add eps to error for graphing purposes
             e = abs(e) + eps;
@@ -248,52 +252,6 @@ subplot(1,2,2);
 plot(xx,e,'Linewidth',1);
 legend('Error');
 
-
-
-
-
-
-
-%    soln = table(x);  % init soln data table with FD points
-
-%     % save solution data to table
-%     solnsfix = ['ply',num2str(ply)];
-%     solnvars = {['uext', solnsfix],['uapx', solnsfix],['e', solnsfix]};
-%     tmp = table(uext,uapx,e);
-%     tmp.Properties.VariableNames = solnvars;
-%     soln = [soln, tmp]; %#ok<AGROW> % concatenate tmp table with solutions table
-%
-% end
-%
-%     % write solutions table to data file for each n value
-%     writetable(soln,[prbsfx,'n',num2str(n),'soln','.dat'],'Delimiter','\t');
-%
-% end
-%
-% % export data to .dat file
-%
-% nrms = zeros(size(L2,1),size(L2,2)*2+1);
-% nrmsvars = {'n'};
-% nrms(:,1) = nn;
-%
-% for j = 1:size(L2,2)
-%
-%     nrms(:,j*2) = L2(:,j);
-%     nrms(:,j*2+1) = Linf(:,j);
-%
-%     beta = betalist(j);
-%     nrmssfix = ['be',num2str(beta)];
-%     nrmsvars = [nrmsvars, {['L2', nrmssfix], ['Linf', nrmssfix]}]; %#ok<AGROW>
-%
-% end
-%
-% nrmtbl = array2table(nrms);
-% nrmtbl.Properties.VariableNames = nrmsvars;
-% writetable(nrmtbl,[prbsfx,'nrms','.dat'],'Delimiter','\t');
-
-% s = sym(L);
-% v = vpa(s,5); % assign numerical precision
-% latex(v)
 
 
 
