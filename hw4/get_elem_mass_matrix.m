@@ -2,7 +2,7 @@
 function [I, J, K] = get_elem_mass_matrix(e,v)
 
 x = v(:,1); y = v(:,2);  % get x,y coordinates of element vertices
-area = .5*det([x';y';1,1,1]);  % area of element triangle
+area = abs(.5*det([x';y';1,1,1]));  % area of element triangle
 
 % create element mass matrix
 eA0 = [2, 1, 1;

@@ -5,7 +5,7 @@ function [I, J, K] = get_elem_stiffness_matrix(e,v)
 % basis functions lambda... barycentric coordinates
 
 x = v(:,1); y = v(:,2);  % get x,y coordinates of element vertices
-area = .5*det([x';y';1,1,1]);  % area of element triangle
+area = abs(.5*det([x';y';1,1,1]));  % area of element triangle
 nab = area*2;  % triangle symbol... nabla
 cyc = [1,2,3,1,2,3];
 a = zeros(3,1); b = zeros(3,1); c = zeros(3,1);
