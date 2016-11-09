@@ -60,7 +60,9 @@ for elemID = 1:size(elems,1)
     gJ1(idx1:idx2) = eJ1;
     gK1(idx1:idx2) = eK1;
     idx1 = idx2 + 1;  % start index for next element
-    gF(e) = gF(e) + eF;
+%     gF(e) = gF(e) + eF;
+    gF(e) = eF;
+
     
 end
 
@@ -83,6 +85,7 @@ X = verts(vi,1); Y = verts(vi,2);
 tr = triangulation(elems,X,Y,Z);
 subplot(1,2,1)
 trisurf(tr);
+axis([0 1 0 1 -1 1]);
 title('Approx'); xlabel('X'); ylabel('Y'); zlabel('u_h');
 
 % Exact solution
