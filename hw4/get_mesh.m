@@ -19,12 +19,16 @@ function [n, verts, elems, bounds] = get_mesh(fname)
 lines = dlmread([fname, '.node.txt']);
 nvert = lines(1,1);  % number of vertices
 verts = lines(2:end,2:3); % vertex positions
-bounds = lines(2:end,4);  % boundary markers
+
 
 % Get elements
 lines = dlmread([fname, '.ele.txt']);
 nelem = lines(1,1);     % number of elements
 elems = lines(2:end,2:4);  % element markers
+
+% Get boundary nodes
+lines = dlmread([fname, '.poly.txt']);
+bounds = lines(3:end-1,2:3);  % boundary markers
 
 n = [nvert, nelem];
 

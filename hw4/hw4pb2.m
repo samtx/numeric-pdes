@@ -1,9 +1,10 @@
 
 
-function [uapx, uext, time, L2, H1, X, Y] = hw4pb1(n, verts, elems) 
+function [uapx, time, X, Y] = hw4pb2(n, verts, elems, bounds) 
 
 nnode = 3;  % nodes per element
-q = 5;  % constant
+q = 1;  % constant
+g = 1;  % boundary condition
 
 nV = n(1);  % number of vertices of all triangle elements
 nE = n(2);  % number of 3-noded triangle elements
@@ -23,7 +24,7 @@ idx1 = 1;  % start index for first element
 % force vector
 f = @(x,y) (5+10*pi^2)*cos(3*pi*x).*cos(pi*y);
 
-tic;
+tic; 
 for elemID = 1:size(elems,1)
     
     % choose element by ID
@@ -41,7 +42,7 @@ for elemID = 1:size(elems,1)
     x = v(:,1); y = v(:,2);  % get x,y coordinates of element vertices
     eFidx = e;
     %     eF = f(x,y);
-    eF = (5+10*pi^2)*cos(3*pi*x).*cos(pi*y);
+    eF = 1;
     
     % add element triplets to global triplets vectors
     idx2 = idx1 + nnode^2 - 1; % end index
@@ -53,7 +54,6 @@ for elemID = 1:size(elems,1)
     gK1(idx1:idx2) = eK1;
     idx1 = idx2 + 1;  % start index for next element
     gF(e) = eF;
-
     
 end
 
@@ -62,21 +62,24 @@ gA0 = sparse(gI0, gJ0, gK0, nN, nN);
 gA1 = sparse(gI1, gJ1, gK1, nN, nN);
 gF = sparse(gF);
 
+% apply boundary conditions
+
+% loop over the boundary nodes, compute the mass matrix for 1D, 2 node,
+% linear elements. multiply that by g, then add that into the appropriate
+% nodes in the global 2D mass matrix
+
+
+
 % Solve equation
 A = gA1 + q*gA0;
 b = gA0*gF;
 uh = A\b;
 time = toc;
 
-% find error
+% get x-y coordinates of nodes
 [vi, ~, uapx] = find(uh);
-X = verts(vi,1); Y = verts(vi,2);  % get x-y coordinates of nodes
-uext = cos(3*pi*X).*cos(pi*Y);  % exact solution
-e = uext - uapx;  % error
-L2 = norm(e,2);  % L2 norm
-% Linf = norm(e,Inf);  % Infinity norm
-% tmp2A0 = glbA0(:,2:end-1); tmp2A1 = glbA1(:,2:end-1);
-H1 = sqrt(e'*gA1*e + e'*gA0*e);  % H1 norm
+X = verts(vi,1); Y = verts(vi,2);  
+
             
 end
 
