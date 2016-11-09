@@ -77,20 +77,25 @@ b = gA0*gF;
 uh = A\b;
 toc;
 
-% graph FE approx solution
-[vi, ~, Z] = find(uh);
-X = verts(vi,1); Y = verts(vi,2);
-% X = verts(:,1); Y = verts(:,2);
-% Z = uh;
-tr = triangulation(elems,X,Y,Z);
+% find error
+[vi, ~, uapx] = find(uh);
+X = verts(vi,1); Y = verts(vi,2);  % get x-y coordinates of nodes
+uext = cos(3*pi*X).*cos(pi*Y);  % exact solution
+e = uext - uapx;  % error
+L2 = norm(e,2)  % L2 norm
+Linf = norm(e,Inf);  % Infinity norm
+% tmp2A0 = glbA0(:,2:end-1); tmp2A1 = glbA1(:,2:end-1);
+H1 = sqrt(e'*gA0*e + e'*gA0*e)  % H1 norm
+            
+
+
+% graph FE approx and exact solutions
+tr = triangulation(elems,X,Y,uapx);   % Approx Solution
 subplot(1,2,1)
 trisurf(tr);
 axis([0 1 0 1 -1 1]);
 title('Approx'); xlabel('X'); ylabel('Y'); zlabel('u_h');
-
-% Exact solution
-uext = cos(3*pi*X).*cos(pi*Y);
-tr = triangulation(elems,X,Y,uext);
+tr = triangulation(elems,X,Y,uext);  % Exact solution
 subplot(1,2,2)
 trisurf(tr);
 title('Exact'); xlabel('X'); ylabel('Y'); zlabel('U');
