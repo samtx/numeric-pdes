@@ -1,13 +1,14 @@
 
 
-function [uapx, time, X, Y] = hw4pb2(n, verts, elems, bounds) 
+function [uapx, time, X, Y] = hw4pb2(n, verts, elems, bounds, g) 
 
 nnode = 3;  % nodes per element
 q = 1;  % constant
-g = 1;  % boundary condition
+
 
 nV = n(1);  % number of vertices of all triangle elements
 nE = n(2);  % number of 3-noded triangle elements
+nB = n(3);  % number of boundary nodes
 nN = nV;    % total number of nodes
 % draw_mesh(verts, elems);
 
@@ -40,7 +41,7 @@ for elemID = 1:size(elems,1)
     % get element force vector
     %     eF = get_elem_force(e,v,f);
     x = v(:,1); y = v(:,2);  % get x,y coordinates of element vertices
-    eFidx = e;
+    eFidx = e; 
     %     eF = f(x,y);
     eF = 1;
     
@@ -67,12 +68,30 @@ gF = sparse(gF);
 % loop over the boundary nodes, compute the mass matrix for 1D, 2 node,
 % linear elements. multiply that by g, then add that into the appropriate
 % nodes in the global 2D mass matrix
+gIg = zeros(nB*2,1);
+gJg = zeros(nB*2,1);
+gKg = zeros(nB*2,1);
 
+idx1 = 1;
+G = [g, g];  % boundary condition
 
-
+for i = 1:size(bounds,1)
+    idx2 = idx1 + 1;
+    b1 = bounds(i,1); b2 = bounds(i,2);  % boundary node index
+    x1 = verts(b1,1); y1 = verts(b1,2);  % xy coordinates of bound node 1
+    x2 = verts(b2,1); y2 = verts(b2,2);  % xy coordinates of bound node 2
+    h = sqrt((x2-x1)^2+(y2-y1)^2);  % distance between nodes
+    eA0 = h/6 * [2, 1;
+                 1, 2];
+    gIg(idx1:idx2) = [b1; b2];
+    gJg(idx1:idx2) = [1; 1];
+    gKg(idx1:idx2) =  eA0 * G'; % element g vector
+    idx1 = idx2 + 1;
+end
+gG = sparse(gIg, gJg, gKg, nN, 1);
 % Solve equation
 A = gA1 + q*gA0;
-b = gA0*gF;
+b = gA0*gF + gG;
 uh = A\b;
 time = toc;
 
