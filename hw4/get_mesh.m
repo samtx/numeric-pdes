@@ -28,9 +28,10 @@ elems = lines(2:end,2:4);  % element markers
 
 % Get boundary nodes
 lines = dlmread([fname, '.poly.txt']);
-bounds = lines(3:end-1,2:3);  % boundary markers
+nbound = lines(2,1); % number of boundary nodes
+bounds = lines(3:3+nbound-1,2:3);  % boundary markers
 
-n = [nvert, nelem];
+n = [nvert, nelem, nbound];
 
 % Draw triangulation
 % trimesh(elems,verts(:,1),verts(:,2))
