@@ -1,20 +1,14 @@
 
 
-% p = 3;
-% n = 10;
-% c = 1;
-% origfname = 'p3c.1';
+function [uapx, time, X, Y] = hw4pb2(n, verts, elems, bounds, g) 
 
 nnode = 3;  % nodes per element
-q = 5;  % constant
+q = 1;  % constant
 
-
-fname = 'mesh/p1n40';
-
-[n, verts, elems, bounds] =  get_mesh(fname);
 
 nV = n(1);  % number of vertices of all triangle elements
 nE = n(2);  % number of 3-noded triangle elements
+nB = n(3);  % number of boundary nodes
 nN = nV;    % total number of nodes
 % draw_mesh(verts, elems);
 
@@ -31,7 +25,7 @@ idx1 = 1;  % start index for first element
 % force vector
 f = @(x,y) (5+10*pi^2)*cos(3*pi*x).*cos(pi*y);
 
-tic;
+tic; 
 for elemID = 1:size(elems,1)
     
     % choose element by ID
@@ -47,9 +41,9 @@ for elemID = 1:size(elems,1)
     % get element force vector
     %     eF = get_elem_force(e,v,f);
     x = v(:,1); y = v(:,2);  % get x,y coordinates of element vertices
-    eFidx = e;
+    eFidx = e; 
     %     eF = f(x,y);
-    eF = (5+10*pi^2)*cos(3*pi*x).*cos(pi*y);
+    eF = 1;
     
     % add element triplets to global triplets vectors
     idx2 = idx1 + nnode^2 - 1; % end index
@@ -60,7 +54,7 @@ for elemID = 1:size(elems,1)
     gJ1(idx1:idx2) = eJ1;
     gK1(idx1:idx2) = eK1;
     idx1 = idx2 + 1;  % start index for next element
-    gF(e) = gF(e) + eF;
+    gF(e) = eF;
     
 end
 
@@ -69,26 +63,43 @@ gA0 = sparse(gI0, gJ0, gK0, nN, nN);
 gA1 = sparse(gI1, gJ1, gK1, nN, nN);
 gF = sparse(gF);
 
+% apply boundary conditions
+
+% loop over the boundary nodes, compute the mass matrix for 1D, 2 node,
+% linear elements. multiply that by g, then add that into the appropriate
+% nodes in the global 2D mass matrix
+gIg = zeros(nB*2,1);
+gJg = zeros(nB*2,1);
+gKg = zeros(nB*2,1);
+
+idx1 = 1;
+G = [g, g];  % boundary condition
+
+for i = 1:size(bounds,1)
+    idx2 = idx1 + 1;
+    b1 = bounds(i,1); b2 = bounds(i,2);  % boundary node index
+    x1 = verts(b1,1); y1 = verts(b1,2);  % xy coordinates of bound node 1
+    x2 = verts(b2,1); y2 = verts(b2,2);  % xy coordinates of bound node 2
+    h = sqrt((x2-x1)^2+(y2-y1)^2);  % distance between nodes
+    eA0 = h/6 * [2, 1;
+                 1, 2];
+    gIg(idx1:idx2) = [b1; b2];
+    gJg(idx1:idx2) = [1; 1];
+    gKg(idx1:idx2) =  eA0 * G'; % element g vector
+    idx1 = idx2 + 1;
+end
+gG = sparse(gIg, gJg, gKg, nN, 1);
 % Solve equation
 A = gA1 + q*gA0;
-b = gA0*gF;
+b = gA0*gF + gG;
 uh = A\b;
-toc;
+time = toc;
 
-% graph FE approx solution
-[vi, ~, Z] = find(uh);
-X = verts(vi,1); Y = verts(vi,2);
-% X = verts(:,1); Y = verts(:,2);
-% Z = uh;
-tr = triangulation(elems,X,Y,Z);
-subplot(1,2,1)
-trisurf(tr);
-title('Approx'); xlabel('X'); ylabel('Y'); zlabel('u_h');
+% get x-y coordinates of nodes
+[vi, ~, uapx] = find(uh);
+X = verts(vi,1); Y = verts(vi,2);  
 
-% Exact solution
-uext = cos(3*pi*X).*cos(pi*Y);
-tr = triangulation(elems,X,Y,uext);
-subplot(1,2,2)
-trisurf(tr);
-title('Exact'); xlabel('X'); ylabel('Y'); zlabel('U');
+            
+end
+
 
